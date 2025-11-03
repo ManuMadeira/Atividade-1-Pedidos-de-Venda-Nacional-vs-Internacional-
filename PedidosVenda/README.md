@@ -1,4 +1,5 @@
 ﻿# Sistema de Processamento de Pedidos
+ Emmanuelly Madeira
 
 ## Como Executar
 1. Clone o repositório
