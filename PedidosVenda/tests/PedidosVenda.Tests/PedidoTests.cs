@@ -4,55 +4,77 @@ using System;
 public class PedidoTests
 {
     [Fact]
-    public void TestarLSP_ProcessarFuncionaComTodosOsTipos()
+    public void TestarLSP_Basico()
     {
-        Pedido nacional = new PedidoNacional(Estrategias.FreteFixo, Estrategias.SemPromocao);
-        Pedido internacional = new PedidoInternacional(Estrategias.FreteFixo, Estrategias.SemPromocao);
+        // Teste mais simples sem tipos anônimos
+        Func<decimal, decimal> frete = Estrategias.FreteFixo;
+        Func<decimal, decimal> promocao = Estrategias.SemPromocao;
+
+        Pedido nacional = new PedidoNacional(frete, promocao);
+        Pedido internacional = new PedidoInternacional(frete, promocao);
+
+        string resultado1 = nacional.Processar();
+        string resultado2 = internacional.Processar();
+
+        // Usar Assert.Contains corretamente
+        Assert.Contains("NF-e", resultado1);
+        Assert.Contains("Commercial Invoice", resultado2);
+    }
+
+    [Fact]
+    public void TestarComposicao_Simples()
+    {
+        // Teste individual de cada combinação
+        Func<decimal, decimal> freteFixo = Estrategias.FreteFixo;
+        Func<decimal, decimal> semPromocao = Estrategias.SemPromocao;
+        
+        Pedido pedido1 = new PedidoNacional(freteFixo, semPromocao);
+        string resultado1 = pedido1.Processar();
+        Assert.Contains("NF-e", resultado1);
+
+        Func<decimal, decimal> fretePercentual = Estrategias.FretePercentual;
+        Func<decimal, decimal> descontoFixo = Estrategias.DescontoFixo;
+        
+        Pedido pedido2 = new PedidoNacional(fretePercentual, descontoFixo);
+        string resultado2 = pedido2.Processar();
+        Assert.Contains("NF-e", resultado2);
+
+        Func<decimal, decimal> freteGratis = Estrategias.FreteGratis;
+        Func<decimal, decimal> descontoPercentual = Estrategias.DescontoPercentual;
+        
+        Pedido pedido3 = new PedidoNacional(freteGratis, descontoPercentual);
+        string resultado3 = pedido3.Processar();
+        Assert.Contains("NF-e", resultado3);
+    }
+
+    [Fact]
+    public void TestarDiferencaEntreTipos()
+    {
+        Func<decimal, decimal> frete = Estrategias.FreteGratis;
+        Func<decimal, decimal> promocao = Estrategias.SemPromocao;
+
+        Pedido nacional = new PedidoNacional(frete, promocao);
+        Pedido internacional = new PedidoInternacional(frete, promocao);
 
         string resultadoNacional = nacional.Processar();
         string resultadoInternacional = internacional.Processar();
 
-        Assert.Contains("NF-e", resultadoNacional);
-        Assert.Contains("Commercial Invoice", resultadoInternacional);
+        // Devem ser diferentes porque um aplica 10% e outro 20%
+        Assert.NotEqual(resultadoNacional, resultadoInternacional);
+    }
+
+    [Fact]
+    public void TestarCalculo_ValoresEspecificos()
+    {
+        // Teste com valores conhecidos
+        Func<decimal, decimal> freteFixo = Estrategias.FreteFixo;
+        Func<decimal, decimal> semPromocao = Estrategias.SemPromocao;
+
+        Pedido nacional = new PedidoNacional(freteFixo, semPromocao);
         
-        Pedido[] pedidos = { nacional, internacional };
-        foreach (var pedido in pedidos)
-        {
-            string resultado = pedido.Processar();
-            Assert.NotNull(resultado);
-            Assert.NotEmpty(resultado);
-        }
-    }
-
-    [Fact]
-    public void TestarComposicao_TrocaDeDelegatesAlteraResultado()
-    {
-        var combinacoes = new[]
-        {
-            new { Frete = Estrategias.FreteFixo, Promocao = Estrategias.SemPromocao },
-            new { Frete = Estrategias.FretePercentual, Promocao = Estrategias.DescontoFixo },
-            new { Frete = Estrategias.FreteGratis, Promocao = Estrategias.DescontoPercentual }
-        };
-
-        foreach (var combo in combinacoes)
-        {
-            Pedido pedido = new PedidoNacional(combo.Frete, combo.Promocao);
-            string resultado = pedido.Processar();
-
-            Assert.NotNull(resultado);
-            Assert.Contains("NF-e", resultado);
-        }
-    }
-
-    [Fact]
-    public void TestarCalculoTotal_ComDiferentesPoliticas()
-    {
-        Pedido pedidoBasico = new PedidoNacional(Estrategias.FreteGratis, Estrategias.SemPromocao);
-        Pedido pedidoComDesconto = new PedidoNacional(Estrategias.FreteGratis, Estrategias.DescontoPercentual);
-
-        string resultadoBasico = pedidoBasico.Processar();
-        string resultadoComDesconto = pedidoComDesconto.Processar();
-
-        Assert.NotEqual(resultadoBasico, resultadoComDesconto);
+        string resultado = nacional.Processar();
+        
+        // Valor esperado: 100 * 1.1 = 110 + 15 = 125
+        Assert.Contains("125", resultado);
     }
 }
